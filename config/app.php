@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'name' => 'Application',
+    'name' => 'GeekTime Downloader',
 
     /*
     |--------------------------------------------------------------------------
@@ -55,6 +55,7 @@ return [
 
     'providers' => [
         App\Providers\AppServiceProvider::class,
+        Illuminate\Log\LogServiceProvider::class,
     ],
 
 ];
