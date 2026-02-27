@@ -137,13 +137,13 @@ class GeektimeApi
      *
      * @return array<string, mixed>
      */
-    public function videoPlayAuth(int $articleId, string $videoId): array
+    public function videoPlayAuth(int $articleId, string $videoId, int $sourceType = 1): array
     {
         $response = $this->client->post(
             self::BASE_URL . self::V3_VIDEO_PLAY_AUTH_PATH,
             [
                 'aid' => $articleId,
-                'source_type' => 1,
+                'source_type' => $sourceType,
                 'video_id' => $videoId,
             ],
         );
