@@ -92,7 +92,7 @@ php application download --phone=13800138000
 | `--gcess` | 无 | GCESS Cookie 值 |
 | `-o`, `--folder` | `~/geektime-downloader` | 下载输出目录 |
 | `--quality` | `sd` | 视频质量：`ld`(流畅) / `sd`(标清) / `hd`(高清) |
-| `--output` | `1` | 文字课程输出格式位掩码（1-7），详见下方说明 |
+| `--output` | `2` | 文字课程输出格式位掩码（1-7），详见下方说明 |
 | `--comments` | `1` | PDF 评论模式：`0`(隐藏) / `1`(首页) / `2`(全部) |
 | `--interval` | `1` | 下载间隔（秒，0-10） |
 | `--enterprise` | 否 | 启用企业版模式 |
@@ -116,8 +116,8 @@ php application download --phone=13800138000
 
 | 值 | 效果 |
 |----|------|
-| `1` | 仅 PDF（默认） |
-| `2` | 仅 Markdown |
+| `1` | 仅 PDF |
+| `2` | 仅 Markdown（默认） |
 | `3` | PDF + Markdown |
 | `4` | 仅 Audio |
 | `5` | PDF + Audio |
