@@ -1,0 +1,81 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Build version (e.g. 0.0.1-test)'
+        required: false
+        default: '0.0.0-dev'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract version
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "VERSION=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, xml, curl, openssl
+          tools: composer:v2
+
+      - name: Install dependencies
+        run: composer install --no-dev --optimize-autoloader --no-interaction
+
+      - name: Build PHAR
+        run: |
+          php application app:build geektime-dl --build-version=${{ steps.version.outputs.VERSION }}
+          cp builds/geektime-dl builds/geektime-dl.phar
+
+      - name: Install PHPacker (dev)
+        run: composer install --optimize-autoloader --no-interaction
+
+      - name: Build Linux x64 binary
+        run: php vendor/bin/phpacker build linux x64 --src=builds/geektime-dl.phar --dest=dist --php=8.4
+
+      - name: Build macOS arm64 binary
+        run: php vendor/bin/phpacker build mac arm --src=builds/geektime-dl.phar --dest=dist --php=8.4
+
+      - name: Build macOS x64 binary
+        run: php vendor/bin/phpacker build mac x64 --src=builds/geektime-dl.phar --dest=dist --php=8.4
+
+      - name: Build Windows x64 binary
+        run: php vendor/bin/phpacker build windows x64 --src=builds/geektime-dl.phar --dest=dist --php=8.4
+
+      - name: Rename binaries
+        run: |
+          mv dist/linux/linux-x64 dist/geektime-dl-linux-x64
+          mv dist/mac/mac-arm dist/geektime-dl-mac-arm64
+          mv dist/mac/mac-x64 dist/geektime-dl-mac-x64
+          mv dist/windows/windows-x64.exe dist/geektime-dl-windows-x64.exe
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            builds/geektime-dl
+            dist/geektime-dl-linux-x64
+            dist/geektime-dl-mac-arm64
+            dist/geektime-dl-mac-x64
+            dist/geektime-dl-windows-x64.exe

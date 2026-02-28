@@ -4,3 +4,5 @@
 /.vagrant
 .phpunit.result.cache
 /node_modules
+/builds
+/dist
