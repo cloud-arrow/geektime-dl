@@ -2,19 +2,54 @@
 
 ## 1. 系统要求
 
+### 使用预编译二进制（推荐）
+
+无需安装 PHP 和 Composer，直接下载对应平台的可执行文件即可运行。
+
+### 使用源码运行
+
 - **PHP 8.2+**（需启用 openssl、mbstring、json 扩展）
 - **Composer**（用于安装依赖）
-- **Google Chrome / Chromium**（PDF 下载需要）
-- **Node.js + Puppeteer**（PDF 下载需要）
+
+### PDF 功能（可选）
+
+- **Google Chrome / Chromium**
+- **Node.js + Puppeteer**
 
 > 如果不需要 PDF 下载功能，可以不安装 Chrome 和 Puppeteer。
 
 ## 2. 安装
 
-### 基本安装
+### 方式一：下载预编译二进制（推荐）
+
+从 [GitHub Releases](https://github.com/cloud-arrow/geektime-dl/releases) 下载对应平台的可执行文件：
+
+| 平台 | 文件名 |
+|------|--------|
+| Linux x64 | `geektime-dl-linux-x64` |
+| macOS Apple Silicon | `geektime-dl-mac-arm64` |
+| macOS Intel | `geektime-dl-mac-x64` |
+| Windows x64 | `geektime-dl-windows-x64.exe` |
 
 ```bash
-git clone <repository-url> geektime-dl
+# Linux / macOS 示例
+chmod +x geektime-dl-linux-x64
+./geektime-dl-linux-x64 download --gcid=xxx --gcess=xxx
+
+# 可选：移动到 PATH 中方便全局使用
+sudo mv geektime-dl-linux-x64 /usr/local/bin/geektime-dl
+geektime-dl download --gcid=xxx --gcess=xxx
+```
+
+```powershell
+# Windows 示例
+.\geektime-dl-windows-x64.exe download --gcid=xxx --gcess=xxx
+```
+
+### 方式二：从源码安装
+
+```bash
+git clone https://github.com/cloud-arrow/geektime-dl.git
 cd geektime-dl
 composer install
 ```
@@ -53,22 +88,28 @@ geektime-dl 使用极客时间的 Cookie 进行认证，需要从浏览器中获
 ### 使用 Cookie 直接运行
 
 ```bash
+# 预编译二进制
+geektime-dl download --gcid=你的GCID值 --gcess=你的GCESS值
+
+# 源码运行
 php application download --gcid=你的GCID值 --gcess=你的GCESS值
 ```
+
+> 以下示例统一使用 `geektime-dl` 命令，源码运行请替换为 `php application`。
 
 ### 交互式 Cookie 输入
 
 如果不提供 `--gcid` 和 `--gcess` 参数，**且没有已保存的配置文件**（`~/.geektime/config.json`），程序会提示你交互式输入 Cookie：
 
 ```bash
-php application download
+geektime-dl download
 # 提示输入: 请输入极客时间 Cookie (格式: GCID=xxx; GCESS=xxx)
 ```
 
 ### 使用手机号登录
 
 ```bash
-php application download --phone=13800138000
+geektime-dl download --phone=13800138000
 # 提示输入密码
 ```
 
@@ -126,10 +167,10 @@ php application download --phone=13800138000
 
 ```bash
 # 下载 PDF + Markdown
-php application download --gcid=xxx --gcess=xxx --output=3
+geektime-dl download --gcid=xxx --gcess=xxx --output=3
 
 # 下载所有格式
-php application download --gcid=xxx --gcess=xxx --output=7
+geektime-dl download --gcid=xxx --gcess=xxx --output=7
 ```
 
 ### PDF
@@ -162,7 +203,7 @@ php application download --gcid=xxx --gcess=xxx --output=7
 
 ```bash
 # 下载高清视频
-php application download --gcid=xxx --gcess=xxx --quality=hd
+geektime-dl download --gcid=xxx --gcess=xxx --quality=hd
 ```
 
 > 如果请求的质量不可用，会自动回退到第一个可用的质量选项。
@@ -202,7 +243,7 @@ URL 格式：`https://time.geekbang.org/qconplus/detail/100xxx`
 使用 `--enterprise` 标志启用企业版模式：
 
 ```bash
-php application download --gcid=xxx --gcess=xxx --enterprise
+geektime-dl download --gcid=xxx --gcess=xxx --enterprise
 ```
 
 企业版只支持训练营类型课程。
@@ -249,11 +290,11 @@ php application download --gcid=xxx --gcess=xxx --enterprise
 
 ```bash
 # 方式一：命令行参数覆盖保存的 Cookie
-php application download --gcid=新的GCID --gcess=新的GCESS
+geektime-dl download --gcid=新的GCID --gcess=新的GCESS
 
 # 方式二：删除配置文件，重新交互式输入
 rm ~/.geektime/config.json
-php application download
+geektime-dl download
 ```
 
 ## 11. 常见问题
