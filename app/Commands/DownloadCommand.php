@@ -39,7 +39,7 @@ class DownloadCommand extends Command
         {--gcess= : GCESS cookie value}
         {--o|folder= : Download output directory}
         {--quality=sd : Video quality: ld/sd/hd}
-        {--output=1 : Column output type bitmask 1-7 (1=PDF, 2=Markdown, 4=Audio)}
+        {--output=2 : Column output type bitmask 1-7 (1=PDF, 2=Markdown, 4=Audio)}
         {--comments=1 : Comment mode 0/1/2 (0=none, 1=first page, 2=all)}
         {--print-pdf-wait=5 : Chrome PDF print wait seconds}
         {--print-pdf-timeout=60 : Chrome PDF timeout seconds}

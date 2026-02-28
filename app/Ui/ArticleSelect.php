@@ -26,12 +26,13 @@ final class ArticleSelect
      */
     public static function prompt(array $articles): int
     {
-        // Build options with "go back" as the first item (key 0)
-        $options = [0 => '返回上一级'];
+        // Build options with string keys to ensure select() returns keys, not values.
+        // Laravel Prompts select() returns values for list arrays (array_is_list),
+        // but returns keys for associative arrays.
+        $options = ['back' => '返回上一级'];
 
         foreach ($articles as $i => $article) {
-            // Article indices start at 1 (offset by the "go back" entry)
-            $options[$i + 1] = $article->title;
+            $options['article_' . $i] = $article->title;
         }
 
         $selected = select(
@@ -40,6 +41,11 @@ final class ArticleSelect
             scroll: 20,
         );
 
-        return (int) $selected;
+        if ($selected === 'back') {
+            return 0;
+        }
+
+        // Extract index from 'article_X' and offset by 1 (matching original behavior)
+        return (int) str_replace('article_', '', (string) $selected) + 1;
     }
 }

@@ -35,15 +35,15 @@ final class ProductAction
     {
         if ($course->isTextCourse()) {
             $options = [
-                self::ACTION_GO_BACK => '重新选择课程',
-                self::ACTION_DOWNLOAD_ALL => '下载当前专栏所有文章',
-                self::ACTION_SELECT_ARTICLE => '选择文章',
+                'go_back' => '重新选择课程',
+                'download_all' => '下载当前专栏所有文章',
+                'select_article' => '选择文章',
             ];
         } else {
             $options = [
-                self::ACTION_GO_BACK => '重新选择课程',
-                self::ACTION_DOWNLOAD_ALL => '下载所有视频',
-                self::ACTION_SELECT_ARTICLE => '选择视频',
+                'go_back' => '重新选择课程',
+                'download_all' => '下载所有视频',
+                'select_article' => '选择视频',
             ];
         }
 
@@ -52,6 +52,10 @@ final class ProductAction
             options: $options,
         );
 
-        return (int) $selected;
+        return match ($selected) {
+            'download_all' => self::ACTION_DOWNLOAD_ALL,
+            'select_article' => self::ACTION_SELECT_ARTICLE,
+            default => self::ACTION_GO_BACK,
+        };
     }
 }

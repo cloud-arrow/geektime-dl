@@ -58,7 +58,7 @@ php application download --gcid=你的GCID值 --gcess=你的GCESS值
 
 ### 交互式 Cookie 输入
 
-如果不提供 `--gcid` 和 `--gcess` 参数，程序会提示你交互式输入 Cookie：
+如果不提供 `--gcid` 和 `--gcess` 参数，**且没有已保存的配置文件**（`~/.geektime/config.json`），程序会提示你交互式输入 Cookie：
 
 ```bash
 php application download
@@ -243,7 +243,18 @@ php application download --gcid=xxx --gcess=xxx --enterprise
 
 首次运行后，配置会自动保存到 `~/.geektime/config.json`，包括 Cookie、下载目录等设置。下次运行时自动加载，无需重复输入。
 
-命令行参数优先级高于保存的配置。
+**优先级**：命令行参数 > 已保存的配置 > 默认值。
+
+如需更换账号或 Cookie 过期，有以下方式：
+
+```bash
+# 方式一：命令行参数覆盖保存的 Cookie
+php application download --gcid=新的GCID --gcess=新的GCESS
+
+# 方式二：删除配置文件，重新交互式输入
+rm ~/.geektime/config.json
+php application download
+```
 
 ## 11. 常见问题
 

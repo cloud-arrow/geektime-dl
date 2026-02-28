@@ -33,18 +33,22 @@ final class ProductTypeSelect
     {
         $options = self::buildOptions($isEnterprise);
 
-        // Build label => index map for the select prompt
+        // Build string-keyed label map to ensure select() returns keys, not values.
+        // Laravel Prompts select() returns values for list arrays (array_is_list),
+        // but returns keys for associative arrays.
         $labels = [];
         foreach ($options as $option) {
-            $labels[$option->index] = $option->text;
+            $labels['type_' . $option->index] = $option->text;
         }
 
-        $selectedIndex = select(
+        $selectedKey = select(
             label: '请选择想要下载的产品类型',
             options: $labels,
         );
 
-        return $options[(int) $selectedIndex];
+        $index = (int) str_replace('type_', '', (string) $selectedKey);
+
+        return $options[$index];
     }
 
     /**
