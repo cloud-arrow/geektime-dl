@@ -182,7 +182,7 @@ final class CourseDownloader
      */
     private function downloadAllTextArticles(Course $course, string $columnDir): void
     {
-        Log::info("Downloading all articles from course: {$course->title}");
+        fwrite(STDERR, sprintf("正在下载专栏 《%s》 中的所有文章\n", $course->title));
 
         $total = count($course->articles);
         $downloaded = 0;
@@ -224,6 +224,11 @@ final class CourseDownloader
         string $columnDir,
         bool $isUniversity,
     ): void {
+        fwrite(STDERR, sprintf("正在下载专栏 《%s》 中的所有视频\n", $course->title));
+
+        $total = count($course->articles);
+        $downloaded = 0;
+
         foreach ($course->articles as $article) {
             if ($this->cancelled) {
                 Log::info('Download cancelled');
@@ -238,6 +243,9 @@ final class CourseDownloader
                     $videoId = (string) ($universityArticleDetail['video_id'] ?? '');
                     if ($videoId === '') {
                         // Skip non-video articles in university courses
+                        $downloaded++;
+                        $this->showProgress($total, $downloaded);
+
                         continue;
                     }
                 } catch (\Throwable $e) {
@@ -245,12 +253,17 @@ final class CourseDownloader
                         'articleID' => $article->aid,
                         'error' => $e->getMessage(),
                     ]);
+                    $downloaded++;
+                    $this->showProgress($total, $downloaded);
 
                     continue;
                 }
             }
 
             if ($this->videoDownloader->videoFileExists($article->title, $columnDir)) {
+                $downloaded++;
+                $this->showProgress($total, $downloaded);
+
                 continue;
             }
 
@@ -259,6 +272,8 @@ final class CourseDownloader
             }, $article->aid, $article->title);
 
             $this->waitRandomTime();
+            $downloaded++;
+            $this->showProgress($total, $downloaded);
         }
     }
 
@@ -648,6 +663,10 @@ final class CourseDownloader
     private function showProgress(int $total, int $downloaded): void
     {
         $current = min($downloaded, $total);
-        Log::info(sprintf('Download progress: %d/%d', $current, $total));
+        fwrite(STDERR, sprintf("\r已完成下载 %d/%d", $current, $total));
+
+        if ($current >= $total) {
+            fwrite(STDERR, "\n");
+        }
     }
 }
