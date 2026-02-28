@@ -309,14 +309,25 @@ final class FsmRunner
 
     /**
      * Load a university/training camp course (info + articles from lessons).
+     *
+     * The UniversityApi handles error code -5001 by returning ['access' => false]
+     * instead of throwing, matching Go's university.go lines 42-46.
      */
     private function loadUniversityCourse(int $classID): ?Course
     {
         $classData = $this->universityApi->productInfo($classID);
 
-        // University uses access_mask in a different way:
-        // if the response is successful, access is true
-        // Error code -5001 means no access (handled at API level)
+        // UniversityApi returns ['access' => false] for error code -5001
+        if (isset($classData['access']) && $classData['access'] === false) {
+            return new Course(
+                id: $classID,
+                title: '',
+                type: '',
+                isVideo: true,
+                access: false,
+            );
+        }
+
         $title = (string) ($classData['title'] ?? '');
         $lessons = $classData['lessons'] ?? [];
 
@@ -331,14 +342,12 @@ final class FsmRunner
             }
         }
 
-        $hasAccess = ! empty($title) || ! empty($articles);
-
         return new Course(
             id: $classID,
             title: $title,
             type: '',
             isVideo: true,  // Training camp currently only supports video download
-            access: $hasAccess,
+            access: true,
             articles: $articles,
         );
     }

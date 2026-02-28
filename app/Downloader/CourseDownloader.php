@@ -9,6 +9,7 @@ use App\Enums\OutputType;
 use App\Geektime\Dto\Article;
 use App\Geektime\Dto\Course;
 use App\Geektime\EnterpriseApi;
+use App\Geektime\Exceptions\RateLimitException;
 use App\Geektime\GeektimeApi;
 use App\Geektime\UniversityApi;
 use App\Http\FileDownloader;
@@ -205,15 +206,9 @@ final class CourseDownloader
                 'articleTitle' => $article->title,
             ]);
 
-            try {
+            $this->executeWithRateLimitRetry(function () use ($article, $columnDir): void {
                 $this->downloadTextArticle($article, $columnDir, false);
-            } catch (\Throwable $e) {
-                Log::error('Failed to download text article, continuing with next', [
-                    'articleID' => $article->aid,
-                    'title' => $article->title,
-                    'error' => $e->getMessage(),
-                ]);
-            }
+            }, $article->aid, $article->title);
 
             $this->waitRandomTime();
             $downloaded++;
@@ -259,15 +254,9 @@ final class CourseDownloader
                 continue;
             }
 
-            try {
+            $this->executeWithRateLimitRetry(function () use ($course, $article, $columnDir, $isUniversity): void {
                 $this->downloadVideoArticle($course, $article, $columnDir, $isUniversity);
-            } catch (\Throwable $e) {
-                Log::error('Failed to download video article, continuing with next', [
-                    'articleID' => $article->aid,
-                    'title' => $article->title,
-                    'error' => $e->getMessage(),
-                ]);
-            }
+            }, $article->aid, $article->title);
 
             $this->waitRandomTime();
         }
@@ -582,6 +571,74 @@ final class CourseDownloader
 
         if ($totalMs > 0) {
             usleep($totalMs * 1000);
+        }
+    }
+
+    /**
+     * Execute a download action with rate limit retry.
+     *
+     * When a RateLimitException (HTTP 451) is caught, waits with exponential
+     * backoff (30s → 60s → 120s) and retries. This handles the GeekTime API's
+     * frequency limit which triggers after ~80 consecutive article requests.
+     *
+     * Go's DownloadAll immediately terminates on rate limit errors (return err).
+     * This implementation improves on that by retrying with backoff.
+     *
+     * @param  callable(): void  $action  The download action to execute
+     * @param  int  $articleId  Article ID for logging
+     * @param  string  $articleTitle  Article title for logging
+     */
+    private function executeWithRateLimitRetry(callable $action, int $articleId, string $articleTitle): void
+    {
+        $maxRetries = 3;
+        $waitSeconds = 30;
+
+        for ($retry = 0; $retry <= $maxRetries; $retry++) {
+            try {
+                $action();
+
+                return;
+            } catch (RateLimitException $e) {
+                if ($retry >= $maxRetries) {
+                    Log::error('Rate limit: max retries exceeded, skipping article', [
+                        'articleID' => $articleId,
+                        'title' => $articleTitle,
+                        'retries' => $retry,
+                    ]);
+                    fwrite(STDERR, sprintf(
+                        "\r限流重试 %d 次仍失败，跳过: %s\n",
+                        $maxRetries,
+                        $articleTitle,
+                    ));
+
+                    return;
+                }
+
+                Log::warning('Rate limit hit, waiting before retry', [
+                    'articleID' => $articleId,
+                    'title' => $articleTitle,
+                    'retry' => $retry + 1,
+                    'waitSeconds' => $waitSeconds,
+                ]);
+                fwrite(STDERR, sprintf(
+                    "\r触发限流，等待 %ds 后重试 (%d/%d): %s\n",
+                    $waitSeconds,
+                    $retry + 1,
+                    $maxRetries,
+                    $articleTitle,
+                ));
+
+                sleep($waitSeconds);
+                $waitSeconds *= 2;
+            } catch (\Throwable $e) {
+                Log::error('Failed to download article, continuing with next', [
+                    'articleID' => $articleId,
+                    'title' => $articleTitle,
+                    'error' => $e->getMessage(),
+                ]);
+
+                return;
+            }
         }
     }
 

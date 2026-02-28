@@ -204,7 +204,8 @@ final class PdfDownloader
                 ])
                 ->windowSize(834, 1194)
                 ->userAgent(self::DEFAULT_USER_AGENT)
-                ->waitUntilNetworkIdle()
+                ->emulateMedia('screen')
+                ->showBackground()
                 ->timeout($config->printPdfTimeoutSeconds);
 
             // Wait for content to load
@@ -212,8 +213,12 @@ final class PdfDownloader
                 $browsershot->setDelay($config->printPdfWaitSeconds * 1000);
             }
 
-            // Execute JavaScript to clean up page
-            $browsershot->evaluate($jsToExecute);
+            // Inject JavaScript to clean up page (runs in same browser session before PDF)
+            // Note: evaluate() is a terminal method that creates a separate session,
+            // so we use addScriptTag instead to run JS before savePdf().
+            $browsershot->setOption('addScriptTag', json_encode([
+                'content' => $jsToExecute,
+            ]));
 
             // Set PDF margins (0.4 inches on all sides, converted to mm: 0.4 * 25.4 = 10.16)
             $marginMm = 10.16;

@@ -20,9 +20,9 @@ class Filenamify
         // Remove whitespace (equivalent to strings.Join(strings.Fields(str), ""))
         $str = preg_replace('/\s+/', '', $str);
 
-        $reControlChars = '/[\x00-\x1f\x80-\x9f]/';
+        $reControlChars = '/[\x00-\x1f\x80-\x9f]/u';
         $reRelativePath = '/^\.+/';
-        $forbiddenWindowsChars = '/[<>:"\/\\\\|?*\x00-\x1f]/';
+        $forbiddenWindowsChars = '/[<>:"\/\\\\|?*\x00-\x1f]/u';
         $reservedWindowsNames = '/^(con|prn|aux|nul|com[0-9]|lpt[0-9])$/i';
 
         // Replace forbidden Windows characters

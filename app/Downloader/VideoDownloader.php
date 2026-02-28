@@ -19,6 +19,8 @@ use App\Vod\VodUrlBuilder;
 use GuzzleHttp\Client as GuzzleClient;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Symfony\Component\Console\Helper\ProgressBar;
+use Symfony\Component\Console\Output\ConsoleOutput;
 
 /**
  * Downloads video articles as .ts files.
@@ -309,6 +311,7 @@ final class VideoDownloader
             $decryptKey,
             $isVodEncryptVideo,
             $concurrency,
+            $playInfo->size,
         );
     }
 
@@ -316,6 +319,7 @@ final class VideoDownloader
      * Download TS segments, optionally decrypt, and merge into a single .ts file.
      *
      * Matches Go's download + mergeTSFiles functions.
+     * Shows a progress bar during download (matching Go's pb.ProgressBar).
      *
      * @param  string  $tsUrlPrefix  URL prefix for TS segments
      * @param  string  $title  Video title for output filename
@@ -324,6 +328,7 @@ final class VideoDownloader
      * @param  string  $decryptKey  Hex-encoded AES decrypt key (empty if not encrypted)
      * @param  bool  $isVodEncryptVideo  Whether segments need decryption
      * @param  int  $concurrency  Download concurrency per segment
+     * @param  int  $totalSize  Expected total file size in bytes (from PlayInfo.Size)
      */
     private function downloadAndMerge(
         string $tsUrlPrefix,
@@ -333,6 +338,7 @@ final class VideoDownloader
         string $decryptKey,
         bool $isVodEncryptVideo,
         int $concurrency,
+        int $totalSize = 0,
     ): void {
         $filenamifyTitle = Filenamify::filenamify($title);
 
@@ -349,13 +355,26 @@ final class VideoDownloader
             'User-Agent' => self::DEFAULT_USER_AGENT,
         ];
 
+        // Create progress bar matching Go's newBar(size, prefix)
+        $bar = $this->createProgressBar($filenamifyTitle, $totalSize);
+        $bar?->start();
+
         try {
             // Download each TS segment sequentially
             foreach ($tsFileNames as $tsFileName) {
                 $url = $tsUrlPrefix.$tsFileName;
                 $dst = $tempVideoDir.DIRECTORY_SEPARATOR.$tsFileName;
 
-                $this->fileDownloader->download($dst, $url, $headers, $concurrency);
+                $fileSize = $this->fileDownloader->download($dst, $url, $headers, $concurrency);
+
+                // Advance progress bar matching Go's addBarValue
+                $this->advanceProgressBar($bar, $fileSize, $totalSize);
+            }
+
+            $bar?->finish();
+            // Move to next line after progress bar
+            if ($bar !== null) {
+                fwrite(STDERR, "\n");
             }
 
             // Merge TS files into final output
@@ -364,6 +383,82 @@ final class VideoDownloader
             // Clean up temp directory (matches Go's defer os.RemoveAll)
             $this->removeDirectory($tempVideoDir);
         }
+    }
+
+    /**
+     * Create a progress bar for video download.
+     *
+     * Matches Go's newBar: shows prefix, bytes progress with SI units, simple template.
+     *
+     * @param  string  $title  Sanitized video title for the prefix
+     * @param  int  $totalSize  Expected total size in bytes
+     * @return ProgressBar|null Returns null if output is not available
+     */
+    private function createProgressBar(string $title, int $totalSize): ?ProgressBar
+    {
+        if ($totalSize <= 0) {
+            return null;
+        }
+
+        try {
+            $output = new ConsoleOutput();
+            $bar = new ProgressBar($output->getErrorOutput(), $totalSize);
+
+            // Match Go's pb.Simple template: prefix + bar + current/total
+            $bar->setFormat("[正在下载 {$title}] %current_size% / %total_size% [%bar%] %percent:3s%%");
+
+            // Custom placeholders for human-readable sizes
+            ProgressBar::setPlaceholderFormatterDefinition('current_size', function (ProgressBar $bar) {
+                return self::formatBytes($bar->getProgress());
+            });
+            ProgressBar::setPlaceholderFormatterDefinition('total_size', function (ProgressBar $bar) {
+                return self::formatBytes($bar->getMaxSteps());
+            });
+
+            $bar->setBarWidth(20);
+            $bar->setRedrawFrequency(1);
+
+            return $bar;
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * Advance progress bar by the downloaded file size.
+     *
+     * Matches Go's addBarValue: caps at total to avoid overflow.
+     */
+    private function advanceProgressBar(?ProgressBar $bar, int $written, int $total): void
+    {
+        if ($bar === null || $written <= 0) {
+            return;
+        }
+
+        // Match Go: if current + written > total, set to total
+        if ($bar->getProgress() + $written > $total) {
+            $bar->setProgress($total);
+        } else {
+            $bar->advance($written);
+        }
+    }
+
+    /**
+     * Format bytes into human-readable SI format.
+     *
+     * Matches Go's pb SIBytesPrefix style (e.g. "12.5 MiB").
+     */
+    private static function formatBytes(int|float $bytes): string
+    {
+        $units = ['B', 'KiB', 'MiB', 'GiB', 'TiB'];
+        $bytes = max(0, $bytes);
+
+        $pow = $bytes > 0 ? (int) floor(log($bytes, 1024)) : 0;
+        $pow = min($pow, count($units) - 1);
+
+        $value = $bytes / (1024 ** $pow);
+
+        return sprintf('%.1f %s', $value, $units[$pow]);
     }
 
     /**
